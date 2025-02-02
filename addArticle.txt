@@ -1,0 +1,72 @@
+const filePath = './articles/article30.html';  // Укажите свой путь к HTML файлу
+
+// Функция для получения структуры данных
+function createArticle() {
+   // Считываем HTML
+   const data = fs.readFileSync(filePath, 'utf8');
+
+   // Загружаем HTML в cheerio
+   const $ = cheerio.load(data);
+
+   // Получаем все элементы, аналогичные вашему querySelectorAll
+   const allElements = $('strong, u, ol, ul');
+
+   // Структура для результата
+   let result = {
+      title: cleanText($('strong').first().text()),
+      id: 27,
+      content: []
+   };
+
+   // Проходим по всем найденным элементам и собираем данные
+   allElements.each((index, item) => {
+      result.content.push(getString(item, $));  // Добавляем каждый элемент в массив
+   });
+
+   // Возвращаем объект, который можно конвертировать в JSON
+   return result;
+}
+
+// Функция для создания строки в нужном формате для каждого элемента
+function getString(item, $) {
+   const tagName = $(item).prop('tagName');  // Получаем тег элемента
+
+   switch (tagName) {
+      case 'OL':
+      case 'UL':
+         let str = {
+            type: "list",
+            items: []
+         };
+
+         $(item).find('li').each((i, li) => {
+            str.items.push(cleanText($(li).text()));  // Добавляем текст из каждого li в массив
+         });
+
+         return str;
+      case 'STRONG':
+         return { type: "header", text: cleanText($(item).text()) };
+      case 'U':
+         return { type: "paragraph", text: cleanText($(item).text()) };
+      default:
+         return {};
+   }
+}
+
+// Функция для удаления лишних пробелов и символов новой строки
+function cleanText(text) {
+   return text.replace(/\n\s+/g, ' ').trim();  // Заменяет \n и пробелы на один пробел, а затем убирает лишние пробелы по краям
+}
+
+async function addArticle() {
+   try {
+      const article = new Article(createArticle())
+
+      const savedArticle = await article.save();
+      console.log(`✅ Статья добавлена с ID: ${savedArticle._id}`);
+   } catch (error) {
+      console.error("❌ Ошибка при добавлении в MongoDB:", error);
+   }
+}
+
+// addArticle();
